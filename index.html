@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 03.4 - Handling Emails & Online Communication</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --primary: #3b82f6;
+            --accent: #f43f5e;
+            --whatsapp: #25D366;
+            --google: #4285F4;
+            --fb-blue: #1877F2;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --panel-bg: rgba(15, 23, 42, 0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; user-select: none; }
+        
+        /* SCALABLE ROOT FOR 86" SMART BOARDS & HIGH-RES DISPLAYS */
+        html { font-size: 16px; }
+        @media (min-width: 1920px) { html { font-size: 20px; } }
+        @media (min-width: 2560px) { html { font-size: 26px; } }
+        @media (min-width: 3800px) { html { font-size: 36px; } }
+        @media (max-width: 950px) { html { font-size: 12px; } }
+
+        body { 
+            background-color: var(--bg-color); color: var(--text-main); overflow: hidden; width: 100vw; height: 100vh; 
+            background-image: radial-gradient(circle at center, #1e1b4b 0%, #0b0f19 100%); 
+        }
+        #presentation { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+
+        .slide { 
+            position: absolute; width: 92%; max-width: 1600px; height: 86%; opacity: 0; 
+            transform: scale(0.95) translateY(20px); transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; flex-direction: column; justify-content: center; pointer-events: none; 
+        }
+        .slide.active { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+
+        h1 { font-size: 3.5rem; color: var(--primary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        h2 { font-size: 2rem; margin-bottom: 25px; color: #cbd5e1; }
+        p, li { font-size: 1.5rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 15px; }
+
+        /* GENERAL LANDSCAPE BOX */
+        .landscape-box {
+            position: relative; width: 100%; height: 48vh; min-height: 380px; max-height: 600px;
+            background: var(--panel-bg); border-radius: 15px; border: 1px solid #334155; 
+            margin-top: 15px; box-shadow: inset 0 0 40px rgba(0,0,0,0.7); overflow: visible; flex-shrink: 0; 
+        }
+
+        .bg-curve { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        @keyframes dashAnim { to { stroke-dashoffset: -100px; } }
+        .bg-curve path { stroke: #475569; stroke-width: 3px; fill: none; stroke-dasharray: 10px, 10px; animation: dashAnim 4s linear infinite; vector-effect: non-scaling-stroke; }
+
+        /* Nodes & UI */
+        .icon-circle { 
+            font-size: 3.5rem; background: #1e293b; width: 90px; height: 90px; margin: 0 auto; 
+            display: flex; justify-content: center; align-items: center; border-radius: 50%; 
+            border: 3px solid #334155; transition: border-color 0.4s, box-shadow 0.4s, filter 0.4s; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative; z-index: 10;
+        }
+        .node-label { margin-top: 15px; font-size: 1.2rem; font-weight: bold; color: #cbd5e1; text-align: center; }
+        .desc-box { 
+            margin-top: 25px; background: rgba(15, 23, 42, 0.8); border-left: 5px solid var(--primary); 
+            padding: 20px; border-radius: 8px; min-height: 100px; font-size: 1.3rem; color: #f8fafc; 
+            opacity: 0; transition: opacity 0.5s; z-index: 50;
+        }
+
+        .net-node { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 5; opacity: 0.4; transition: all 0.4s ease; transform: translate(-50%, -50%) scale(1); width: 160px; }
+        .net-node.active-node { opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; filter: brightness(1.2); }
+        .net-node.active-node .icon-circle { border-color: var(--primary); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); background: rgba(59, 130, 246, 0.2); }
+        .net-node .node-label { background: #000; padding: 4px 12px; border-radius: 12px; }
+        .net-node.active-node .node-label { color: #f8fafc; border: 1px solid var(--primary); }
+
+        /* DATA PACKETS */
+        .data-packet { 
+            position: absolute; z-index: 100; padding: 10px 20px; border-radius: 30px; font-size: 1.2rem; 
+            font-weight: bold; color: white; display: none; align-items: center; gap: 8px; 
+            transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1), top 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s, opacity 0.4s; 
+            border: 2px solid rgba(255,255,255,0.3); transform: translate(-50%, -50%) scale(1); 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5); box-shadow: 0 5px 20px rgba(0,0,0,0.6);
+        }
+        .data-packet.whatsapp { background: var(--whatsapp); box-shadow: 0 0 25px rgba(37, 211, 102, 0.8); }
+        .data-packet.google { background: var(--google); box-shadow: 0 0 25px rgba(66, 133, 244, 0.8); }
+        .data-packet.alert { background: var(--accent); box-shadow: 0 0 25px rgba(244, 63, 94, 0.8); }
+        .data-packet.purple { background: #8b5cf6; box-shadow: 0 0 25px rgba(139, 92, 246, 0.8); }
+        .data-packet.cloud { background: #0ea5e9; box-shadow: 0 0 25px rgba(14, 165, 233, 0.8); }
+
+        /* SLIDE 0: Cards */
+        .comparison-layout { display: flex; gap: 40px; width: 100%; margin-top: 20px; }
+        .info-card { flex: 1; background: var(--panel-bg); border: 1px solid #334155; border-top: 4px solid var(--primary); padding: 35px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); transform: translateY(40px); opacity: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .info-card:nth-child(2) { border-top-color: var(--whatsapp); }
+        .slide.active .info-card:nth-child(1) { animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 0.3s; }
+        .slide.active .info-card:nth-child(2) { animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 0.6s; }
+        .card-header { display: flex; align-items: center; gap: 20px; margin-bottom: 25px; border-bottom: 1px solid #334155; padding-bottom: 20px; }
+        .card-icon { width: 70px; height: 70px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; justify-content: center; align-items: center; padding: 15px; font-size: 2.5rem; }
+        .info-card:nth-child(1) .card-title-box h3 { color: var(--primary); font-size: 2.2rem; }
+        .info-card:nth-child(2) .card-title-box h3 { color: var(--whatsapp); font-size: 2.2rem; }
+        .card-title-box span { font-size: 1.1rem; color: #cbd5e1; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .feature-list { list-style: none; padding: 0; flex: 1; }
+        .feature-list li { font-size: 1.3rem; margin-bottom: 15px; display: flex; align-items: flex-start; gap: 10px; }
+        .feature-list li::before { content: "•"; color: #cbd5e1; font-size: 1.5rem; }
+        @keyframes popIn { to { opacity: 1; transform: translateY(0); } }
+
+        /* SLIDE 1: Email Phishing Setup */
+        .em-landscape { border-color: var(--primary); box-shadow: inset 0 0 40px rgba(59,130,246,0.15); }
+        #emn-hacker { top: 50%; left: 15%; }
+        #emn-server { top: 50%; left: 50%; }
+        #emn-user { top: 50%; left: 85%; }
+
+        .email-inspect-popup {
+            position: absolute; top: -140px; left: 50%; transform: translateX(-50%) scale(0.5);
+            background: #0f172a; border: 2px solid #334155; padding: 12px 15px; border-radius: 10px;
+            opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); width: 280px; z-index: 20; color: white;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.7); font-family: monospace; text-align: left; pointer-events: none;
+        }
+        .email-inspect-popup.show { opacity: 1; transform: translateX(-50%) scale(1); border-color: var(--accent); }
+        .inspect-row { margin-bottom: 6px; font-size: 1rem; line-height: 1.4; word-break: break-all; }
+        .hl-red { color: var(--accent); font-weight: bold; }
+        
+        .shield-pulse {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+            width: 140px; height: 140px; border: 4px solid var(--whatsapp); border-radius: 50%;
+            background: rgba(37, 211, 102, 0.15); opacity: 0; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: -1; box-shadow: 0 0 30px rgba(37, 211, 102, 0.6);
+        }
+        .shield-pulse.active-shield { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .shield-pulse.blue-shield { border-color: var(--primary); background: rgba(59, 130, 246, 0.15); box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+        .shield-pulse.red-shield { border-color: var(--accent); background: rgba(244, 63, 94, 0.15); box-shadow: 0 0 30px rgba(244, 63, 94, 0.6); }
+
+        /* SLIDE 2: Email Etiquette Mockup */
+        .email-mockup { 
+            width: 70%; max-width: 750px; background: #0f172a; border: 1px solid #334155; 
+            border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6); 
+            transition: all 0.4s; z-index: 10; margin: 0 auto;
+        }
+        .mock-top { background: #1e293b; padding: 15px 25px; border-bottom: 1px solid #334155; font-family: monospace; font-size: 1.2rem; color: white;}
+        .mock-row { padding: 8px 15px; border-radius: 8px; transition: all 0.4s ease; border: 2px solid transparent; margin-bottom: 5px;}
+        .mock-row.active-hl { border-color: var(--whatsapp); background: rgba(37, 211, 102, 0.15); box-shadow: 0 0 20px rgba(37, 211, 102, 0.2); }
+        .mock-body { padding: 25px; font-size: 1.3rem; color: white; }
+
+        /* SLIDE 3: Reply vs Reply All */
+        .ra-landscape { border-color: #8b5cf6; box-shadow: inset 0 0 40px rgba(139, 92, 246, 0.15); }
+        #ran-sender { top: 20%; left: 20%; }
+        #ran-you { top: 80%; left: 20%; }
+        #ran-team { top: 50%; left: 80%; }
+
+        /* SLIDES 4 to 7: Floating Email GUI base */
+        .floating-email {
+            position: absolute; top: 10%; left: 5%; width: 280px;
+            background: #0f172a; border: 2px solid #334155; border-radius: 10px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.6); z-index: 15;
+            display: flex; flex-direction: column; font-family: monospace;
+            opacity: 0; transform: translateX(-20px); transition: all 0.5s ease;
+        }
+        .floating-email.show { opacity: 1; transform: translateX(0); }
+        .fe-header { background: #1e293b; padding: 8px 12px; border-bottom: 1px solid #334155; font-weight: bold; color: white; display: flex; gap: 5px; align-items: center; border-radius: 10px 10px 0 0;}
+        .fe-row { padding: 8px 12px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; transition: all 0.4s ease; }
+        .fe-label { color: #94a3b8; width: 40px; font-weight: bold;}
+        .fe-tag { padding: 2px 8px; border-radius: 12px; font-size: 0.9rem; font-family: system-ui, sans-serif; font-weight: 500; transition: all 0.4s; }
+        .fe-to { background: rgba(59, 130, 246, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+        .fe-cc { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+        .fe-bcc { background: rgba(244, 63, 94, 0.2); color: var(--accent); border: 1px solid var(--accent); }
+        .fe-body { padding: 15px; color: #cbd5e1; font-family: system-ui, sans-serif; font-size: 1rem; line-height: 1.4; border-radius: 0 0 10px 10px;}
+        .fe-attach-zone { padding: 10px 15px; background: rgba(255,255,255,0.02); border-top: 1px solid #334155; font-family: system-ui; display: flex; flex-direction: column; gap: 5px; }
+        .attach-pill { background: #334155; padding: 5px 10px; border-radius: 8px; font-size: 0.9rem; color: white; display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity 0.3s; }
+        .attach-pill.show { opacity: 1; }
+
+        /* SLIDE 4: To, CC, BCC Routing */
+        .cc-landscape { border-color: var(--google); box-shadow: inset 0 0 40px rgba(66, 133, 244, 0.15); }
+        #ccn-sender { top: 70%; left: 20%; }
+        #ccn-server { top: 50%; left: 55%; }
+        #ccn-to { top: 20%; left: 85%; }
+        #ccn-cc { top: 50%; left: 85%; }
+        #ccn-bcc { top: 80%; left: 85%; }
+        
+        .privacy-overlay { position: absolute; width: 100%; height: 100%; top: 0; left: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(244,63,94,0.05) 10px, rgba(244,63,94,0.05) 20px); opacity: 0; transition: opacity 0.5s; z-index: 1; pointer-events: none; }
+        .privacy-link { position: absolute; border-left: 2px dashed var(--whatsapp); height: 30%; top: 20%; left: 85%; transform: translateX(-50%); opacity: 0; transition: opacity 0.5s; z-index: 2; display: flex; align-items: center; justify-content: center; }
+        .privacy-link::after { content: "👁️ Shared Visibility"; position: absolute; background: var(--bg-color); color: var(--whatsapp); padding: 2px 10px; border-radius: 10px; font-size: 0.9rem; font-weight: bold; }
+
+        /* SLIDE 5: Mass BCC Ethics */
+        .bcc-mass-landscape { border-color: var(--accent); box-shadow: inset 0 0 40px rgba(244, 63, 94, 0.15); transition: all 0.5s ease; }
+        .bcc-mass-landscape.safe { border-color: var(--whatsapp); box-shadow: inset 0 0 40px rgba(37, 211, 102, 0.15); }
+        
+        #bmn-sender { top: 50%; left: 15%; }
+        #bmn-server { top: 50%; left: 45%; }
+        #bmn-r1 { top: 20%; left: 85%; }
+        #bmn-r2 { top: 50%; left: 85%; }
+        #bmn-r3 { top: 80%; left: 85%; }
+
+        .exposure-lines { position: absolute; top:0; left:0; width:100%; height:100%; z-index:1; opacity:0; transition:opacity 0.5s; pointer-events:none;}
+        .exposure-lines line { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5,5; animation: dashAnim 1.5s linear infinite; }
+        
+        .recipient-popup { position: absolute; left: -160px; top: 10px; background: #0f172a; border: 2px solid var(--accent); padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.3s; color: white; width: 140px; z-index: 10; font-family: monospace; font-weight: bold; }
+        .recipient-popup.safe { border-color: var(--whatsapp); color: var(--whatsapp); }
+
+        /* SLIDE 6: Small Attachments */
+        .as-landscape { border-color: #0ea5e9; box-shadow: inset 0 0 40px rgba(14, 165, 233, 0.15); }
+        #asn-sender { top: 70%; left: 20%; }
+        #asn-server { top: 50%; left: 55%; }
+        #asn-rec { top: 30%; left: 85%; }
+
+        /* SLIDE 7: Large Attachments */
+        .ab-landscape { border-color: #f59e0b; box-shadow: inset 0 0 40px rgba(245, 158, 11, 0.15); }
+        #abn-sender { top: 70%; left: 20%; }
+        #abn-drive { top: 20%; left: 50%; }
+        #abn-server { top: 70%; left: 55%; }
+        #abn-rec { top: 70%; left: 85%; }
+        .error-bounce { animation: bounceBack 1s forwards; }
+        @keyframes bounceBack { 0% { left: 20%; } 50% { left: 40%; } 100% { left: 20%; } }
+
+        /* SLIDE 8: Safe vs Unsafe Inbox */
+        .inbox-mockup { width: 80%; max-width: 900px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6); margin: 0 auto; display: flex; flex-direction: column;}
+        .inbox-top { background: #1e293b; padding: 15px 25px; border-bottom: 1px solid #334155; font-family: monospace; font-size: 1.2rem; color: white; font-weight: bold; display: flex; justify-content: space-between;}
+        .inbox-row { padding: 15px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; opacity: 0; transform: translateX(-20px); transition: all 0.5s ease; background: rgba(255,255,255,0.02); }
+        .inbox-row.show-row { opacity: 1; transform: translateX(0); }
+        .inbox-details { display: flex; flex-direction: column; gap: 5px; }
+        .inbox-sender { font-weight: bold; color: #f8fafc; font-size: 1.1rem;}
+        .inbox-sub { color: #cbd5e1; font-size: 1rem;}
+        .att-pill { padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.95rem; font-weight: bold; display: flex; align-items: center; gap: 5px;}
+        .att-safe { background: rgba(37, 211, 102, 0.2); color: var(--whatsapp); border: 1px solid var(--whatsapp); }
+        .att-unsafe { background: rgba(244, 63, 94, 0.2); color: var(--accent); border: 1px solid var(--accent); animation: blink-caret 1.5s infinite; }
+
+        /* SLIDE 9: Anti-virus Scan */
+        .av-landscape { border-color: var(--whatsapp); box-shadow: inset 0 0 40px rgba(37, 211, 102, 0.15); }
+        #avn-server { top: 30%; left: 20%; }
+        #avn-pc { top: 50%; left: 50%; }
+        #avn-av { top: 80%; left: 80%; }
+        
+        .radar-scan {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--primary);
+            background: conic-gradient(from 0deg, transparent 70%, rgba(59, 130, 246, 0.8) 100%);
+            opacity: 0; z-index: -1;
+        }
+        .radar-scan.scanning { opacity: 1; animation: radarSpin 2s linear infinite; }
+        
+        /* SLIDE 10: EXE Scan */
+        .exe-landscape { border-color: var(--accent); box-shadow: inset 0 0 40px rgba(244, 63, 94, 0.15); }
+        #exen-server { top: 30%; left: 20%; }
+        #exen-pc { top: 50%; left: 50%; }
+        #exen-av { top: 80%; left: 80%; }
+        
+        .red-radar-scan {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--accent);
+            background: conic-gradient(from 0deg, transparent 70%, rgba(244, 63, 94, 0.8) 100%);
+            opacity: 0; z-index: -1;
+        }
+        .red-radar-scan.scanning { opacity: 1; animation: radarSpin 1s linear infinite; }
+
+        @keyframes radarSpin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+        @keyframes blink-caret { from, to { opacity: 1; } 50% { opacity: 0; } }
+
+        /* 📱 RESPONSIVE FALLBACKS */
+        @media (max-width: 950px) {
+            .comparison-layout { flex-direction: column; height: auto; margin-top: 10px; gap: 15px; }
+            .info-card { padding: 15px; margin-bottom: 5px; transform: none !important; }
+            .slide { height: 95%; top: 2.5%; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+            .slide::-webkit-scrollbar { display: none; }
+            .icon-circle { width: 50px; height: 50px; font-size: 2rem; border-width: 2px; }
+            .data-packet { padding: 4px 8px; font-size: 0.9rem; border-radius: 12px; }
+            .desc-box { padding: 15px; min-height: 80px; font-size: 1.1rem; }
+            .net-node { width: 80px; }
+            .node-label { font-size: 0.9rem; margin-top: 8px; }
+            .landscape-box { height: 350px; min-height: 300px; }
+            
+            .email-inspect-popup { width: 210px; top: -120px; left: -80px; padding: 8px; font-size: 0.75rem; }
+            .inspect-row { font-size: 0.75rem; }
+            .shield-pulse, .radar-scan, .red-radar-scan { width: 80px; height: 80px; }
+
+            .email-mockup, .inbox-mockup { width: 90%; }
+            .mock-top, .inbox-top { font-size: 0.9rem; padding: 10px; }
+            .mock-body, .inbox-row { font-size: 1rem; padding: 15px; }
+            .att-pill { font-size: 0.8rem; padding: 2px 6px; }
+            
+            #ccn-sender { top: 85%; left: 15%; }
+            #ccn-to, #bmn-r1, #asn-rec, #abn-rec { top: 15%; left: 80%; }
+            #ccn-cc, #bmn-r2 { top: 50%; left: 80%; }
+            #ccn-bcc, #bmn-r3 { top: 85%; left: 80%; }
+            .privacy-link { left: 80%; }
+            
+            .floating-email { width: 200px; left: 2%; top: 2%; transform: translateX(-20px) scale(0.85); transform-origin: top left;}
+            .floating-email.show { transform: translateX(0) scale(0.85); }
+            .fe-body { display: none; }
+            
+            .recipient-popup { width: 100px; left: -110px; font-size: 0.65rem; padding: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="presentation" onclick="nextSlide()">
+
+        <!-- Slide 0: Online Communication Content Cards -->
+        <section class="slide active" id="slide-0">
+            <div style="display:inline-block; background:rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); color: var(--primary); padding: 6px 18px; border-radius: 20px; font-weight: bold; letter-spacing: 1px; margin-bottom: 20px; font-size: 1rem; align-self: flex-start;">MODULE 3.4 : DIGITAL SAFETY & ETHICS</div>
+            <h1 style="margin-top: 0;">Emails & Online Communication</h1>
+            <h2>Handling your digital interactions responsibly</h2>
+            <div class="comparison-layout">
+                <div class="info-card">
+                    <div class="card-header">
+                        <div class="card-icon">📥</div>
+                        <div class="card-title-box"><h3>Handling Emails & Downloads</h3><span>Inbox Security</span></div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Always verify the actual <b>Sender Address</b>, not just the display name.</li>
+                        <li>Never click links or download `.exe`, `.zip` files from unknown sources.</li>
+                        <li>Use Anti-Virus software to scan attachments before opening.</li>
+                        <li style="color:var(--primary);"><b>Rule: "Think before you click."</b></li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <div class="card-header">
+                        <div class="card-icon">🤝</div>
+                        <div class="card-title-box"><h3>Responsible Communication</h3><span>Digital Etiquette</span></div>
+                    </div>
+                    <ul class="feature-list">
+                        <li>Maintain a professional tone and use clear Subject Lines.</li>
+                        <li>Respect privacy: Do not forward sensitive information or BCC blindly.</li>
+                        <li>Be mindful of your digital footprint when engaging in online debates.</li>
+                        <li style="color:var(--whatsapp);"><b>Rule: "Communicate online as you would in person."</b></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 1: Master Email Animation (Phishing Detection) -->
+        <section class="slide" id="slide-1">
+            <h1 style="color: var(--primary);">Anatomy of a Phishing Attack</h1>
+            <h2>How to identify and handle malicious emails</h2>
+            <div class="landscape-box em-landscape">
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 15 50 L 50 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 50 50 L 85 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet alert" id="em-packet">⚠️ URGENT!</div>
+
+                <div class="net-node em-node" id="emn-hacker"><div class="icon-circle">🕵️</div><div class="node-label">Attacker</div></div>
+                <div class="net-node em-node" id="emn-server"><div class="icon-circle">🗄️</div><div class="node-label">Mail Server</div></div>
+                
+                <div class="net-node em-node" id="emn-user">
+                    <div class="shield-pulse" id="em-shield"></div>
+                    <div class="email-inspect-popup" id="em-popup">
+                        <div class="inspect-row" style="color: #94a3b8;">From: <span style="color: white; font-family: sans-serif;">Bank Support</span></div>
+                        <div class="inspect-row" id="em-sender-address">&lt;<span class="hl-red" id="em-hl-red1">alert@bank-security-update.com</span>&gt;</div>
+                        <hr style="border: 0; border-top: 1px solid #334155; margin: 8px 0;">
+                        <div class="inspect-row" style="color: #94a3b8;">Subject: <span style="color: white; font-weight:bold; font-family: sans-serif;">Account Suspended!</span></div>
+                        <div class="inspect-row" id="em-link-hover" style="display:none; margin-top:8px; border-top: 1px dashed #475569; padding-top: 8px;">
+                            <span style="color: #94a3b8;">Link Hover URL:</span><br>
+                            <span class="hl-red" id="em-hl-red2">http://192.168.1.5/login.php</span>
+                        </div>
+                    </div>
+                    <div class="icon-circle" id="user-icon">💻</div><div class="node-label">Your Inbox</div>
+                </div>
+            </div>
+            <div class="desc-box" id="em-desc" style="border-left-color: var(--primary);"></div>
+        </section>
+
+        <!-- Slide 2: Professional Email Etiquette (Mockup) -->
+        <section class="slide" id="slide-2">
+            <h1 style="color: var(--whatsapp);">Professional Email Structure</h1>
+            <h2>Crafting the perfect digital message</h2>
+            <div class="landscape-box" style="display: flex; justify-content: center; align-items: center; border-color: var(--whatsapp); box-shadow: inset 0 0 40px rgba(37, 211, 102, 0.1);">
+                <div class="email-mockup" id="email-mock">
+                    <div class="mock-top">
+                        <div class="mock-row"><span style="color:#94a3b8">To:</span> manager@company.com</div>
+                        <div id="mock-subject" class="mock-row"><span style="color:#94a3b8">Subject:</span> Project Alpha Q3 Report</div>
+                    </div>
+                    <div class="mock-body">
+                        <div id="mock-greet" class="mock-row" style="font-weight: bold;">Dear Mr. Perera,</div>
+                        <div id="mock-content" class="mock-row" style="color:#cbd5e1; line-height:1.6;">Please find attached the Q3 performance report for Project Alpha. Let me know if you need any revisions before the Friday meeting.</div>
+                        <div id="mock-sign" class="mock-row" style="color:#94a3b8;">Best Regards,<br><b style="color:white;">Himanka Dodangoda</b></div>
+                    </div>
+                </div>
+            </div>
+            <div class="desc-box" id="etq-desc" style="border-left-color: var(--whatsapp);"></div>
+        </section>
+
+        <!-- Slide 3: Reply vs Reply All -->
+        <section class="slide" id="slide-3">
+            <h1 style="color: #8b5cf6;">Reply vs. Reply All</h1>
+            <h2>Knowing who actually needs your response</h2>
+            <div class="landscape-box ra-landscape">
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 20 20 L 20 80" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 20 20 L 80 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 20 80 L 80 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet google" id="ra-pkt-in-user">✉️ Group Mail</div>
+                <div class="data-packet google" id="ra-pkt-in-team">✉️ Group Mail</div>
+                
+                <div class="data-packet whatsapp" id="ra-pkt-reply">↩️ Direct Reply</div>
+                
+                <div class="data-packet purple" id="ra-pkt-ra-sender">🗣️ Reply All</div>
+                <div class="data-packet purple" id="ra-pkt-ra-team">🗣️ Reply All</div>
+
+                <!-- Nodes -->
+                <div class="net-node ra-node" id="ran-sender"><div class="icon-circle">👩🏽‍💼</div><div class="node-label">Manager</div></div>
+                <div class="net-node ra-node" id="ran-you"><div class="icon-circle">💻</div><div class="node-label">You</div></div>
+                <div class="net-node ra-node" id="ran-team"><div class="icon-circle">👥</div><div class="node-label">The Whole Team</div></div>
+            </div>
+            <div class="desc-box" id="ra-desc" style="border-left-color: #8b5cf6;"></div>
+        </section>
+
+        <!-- Slide 4: To, CC, BCC Routing WITH EMAIL GUI -->
+        <section class="slide" id="slide-4">
+            <h1 style="color: var(--google);">Routing & Privacy</h1>
+            <h2>Understanding To, CC, and BCC</h2>
+            <div class="landscape-box cc-landscape">
+                <div class="privacy-overlay" id="bcc-privacy"></div>
+                <div class="privacy-link" id="cc-link"></div>
+
+                <!-- Floating Email GUI -->
+                <div class="floating-email" id="cc-email-gui">
+                    <div class="fe-header"><div style="width:12px;height:12px;border-radius:50%;background:#f43f5e;"></div> New Message</div>
+                    <div class="fe-row" id="fe-row-to"><div class="fe-label">To:</div><div class="fe-tag fe-to">👨🏻‍💼 Manager</div></div>
+                    <div class="fe-row" id="fe-row-cc"><div class="fe-label">CC:</div><div class="fe-tag fe-cc">🧑🏽‍💻 Team</div></div>
+                    <div class="fe-row" id="fe-row-bcc"><div class="fe-label">BCC:</div><div class="fe-tag fe-bcc" id="fe-tag-bcc">🕵️ Client</div></div>
+                    <div class="fe-body">Please find the attached Q3 update. Let me know if you have questions.</div>
+                </div>
+
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 20 70 C 35 70, 35 50, 55 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 55 50 C 70 50, 75 20, 85 20" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 55 50 L 85 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 55 50 C 70 50, 75 80, 85 80" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet google" id="cc-pkt-main">✉️ Email</div>
+                <div class="data-packet google" id="cc-pkt-to" style="display:none;">✉️ Email</div>
+                <div class="data-packet google" id="cc-pkt-cc" style="display:none;">✉️ Email</div>
+                <div class="data-packet google" id="cc-pkt-bcc" style="display:none;">✉️ Email</div>
+
+                <!-- Nodes -->
+                <div class="net-node cc-node" id="ccn-sender"><div class="icon-circle">👩🏽‍💼</div><div class="node-label">You</div></div>
+                <div class="net-node cc-node" id="ccn-server"><div class="icon-circle">🗄️</div><div class="node-label">Mail Server</div></div>
+                <div class="net-node cc-node" id="ccn-to"><div class="icon-circle">👨🏻‍💼</div><div class="node-label">Manager (To)</div></div>
+                <div class="net-node cc-node" id="ccn-cc"><div class="icon-circle">🧑🏽‍💻</div><div class="node-label">Team (CC)</div></div>
+                <div class="net-node cc-node" id="ccn-bcc">
+                    <div class="icon-circle" id="bcc-icon" style="transition: all 0.5s;">🕵️</div>
+                    <div class="node-label">Client (BCC)</div>
+                </div>
+            </div>
+            <div class="desc-box" id="cc-desc" style="border-left-color: var(--google);"></div>
+        </section>
+
+        <!-- Slide 5: Mass Communication & BCC Ethics -->
+        <section class="slide" id="slide-5">
+            <h1 style="color: var(--accent);" id="bcc-title">The Privacy Breach</h1>
+            <h2>Mass emails and the ethical use of BCC</h2>
+            <div class="landscape-box bcc-mass-landscape" id="bcc-mass-box">
+                
+                <!-- Floating Email GUI for Mass Emails -->
+                <div class="floating-email" id="bm-email-gui">
+                    <div class="fe-header"><div style="width:12px;height:12px;border-radius:50%;background:#f43f5e;"></div> Newsletter</div>
+                    <div class="fe-row" id="bm-row-to"><div class="fe-label">To:</div><div class="fe-tag" style="background: rgba(244, 63, 94, 0.2); color: var(--accent); border: 1px solid var(--accent); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">client1@, client2@, client3@...</div></div>
+                    <div class="fe-row" id="bm-row-bcc" style="display:none;"><div class="fe-label">BCC:</div><div class="fe-tag" id="bm-tag-bcc" style="background: rgba(37, 211, 102, 0.2); color: var(--whatsapp); border: 1px solid var(--whatsapp);">👥 500 Clients List</div></div>
+                    <div class="fe-body">Check out our latest updates and offers!</div>
+                </div>
+
+                <svg class="exposure-lines" id="exposure-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <line x1="85" y1="20" x2="85" y2="50" />
+                    <line x1="85" y1="50" x2="85" y2="80" />
+                    <line x1="85" y1="20" x2="85" y2="80" />
+                </svg>
+
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 15 50 L 45 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 45 50 C 65 50, 70 20, 85 20" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 45 50 L 85 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 45 50 C 65 50, 70 80, 85 80" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet alert" id="bm-pkt-main">✉️ Newsletter</div>
+                <div class="data-packet alert" id="bm-pkt-1">✉️</div>
+                <div class="data-packet alert" id="bm-pkt-2">✉️</div>
+                <div class="data-packet alert" id="bm-pkt-3">✉️</div>
+
+                <div class="net-node bm-node" id="bmn-sender"><div class="icon-circle">🏢</div><div class="node-label">Company</div></div>
+                <div class="net-node bm-node" id="bmn-server"><div class="icon-circle">🗄️</div><div class="node-label">Server</div></div>
+                
+                <div class="net-node bm-node" id="bmn-r1">
+                    <div class="recipient-popup" id="rp-1">To: 500 Exposed!</div>
+                    <div class="icon-circle">👤</div><div class="node-label">Client 1</div>
+                </div>
+                <div class="net-node bm-node" id="bmn-r2">
+                    <div class="recipient-popup" id="rp-2">To: 500 Exposed!</div>
+                    <div class="icon-circle">👤</div><div class="node-label">Client 2</div>
+                </div>
+                <div class="net-node bm-node" id="bmn-r3">
+                    <div class="recipient-popup" id="rp-3">To: 500 Exposed!</div>
+                    <div class="icon-circle">👤</div><div class="node-label">Client 3</div>
+                </div>
+            </div>
+            <div class="desc-box" id="bm-desc" style="border-left-color: var(--accent);"></div>
+        </section>
+
+        <!-- Slide 6: Small Attachments -->
+        <section class="slide" id="slide-6">
+            <h1 style="color: #0ea5e9;">Handling Attachments</h1>
+            <h2>Sending direct files (Under 25MB)</h2>
+            <div class="landscape-box as-landscape">
+                
+                <!-- Floating Email GUI for Attachments -->
+                <div class="floating-email" id="as-email-gui">
+                    <div class="fe-header"><div style="width:12px;height:12px;border-radius:50%;background:#0ea5e9;"></div> New Message</div>
+                    <div class="fe-row"><div class="fe-label">To:</div><div style="color:white">hr@company.com</div></div>
+                    <div class="fe-body" style="padding-bottom: 5px;">Here is the requested report.</div>
+                    <div class="fe-attach-zone" id="as-attach-zone">
+                        <div class="attach-pill" id="as-pill">📄 report.pdf (2MB) ✅</div>
+                    </div>
+                </div>
+
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 20 70 C 35 70, 35 50, 55 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 55 50 C 70 50, 75 30, 85 30" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet cloud" id="as-pkt-main">📄 2MB File</div>
+
+                <!-- Nodes -->
+                <div class="net-node as-node" id="asn-sender"><div class="icon-circle">👨🏽‍💻</div><div class="node-label">You</div></div>
+                <div class="net-node as-node" id="asn-server"><div class="icon-circle">🗄️</div><div class="node-label">Mail Server</div></div>
+                <div class="net-node as-node" id="asn-rec"><div class="icon-circle">🏢</div><div class="node-label">Recipient</div></div>
+            </div>
+            <div class="desc-box" id="as-desc" style="border-left-color: #0ea5e9;"></div>
+        </section>
+
+        <!-- Slide 7: Large Attachments (Cloud) -->
+        <section class="slide" id="slide-7">
+            <h1 style="color: #f59e0b;">Sending Large Files</h1>
+            <h2>Bypassing limits with Cloud Links (Over 25MB)</h2>
+            <div class="landscape-box ab-landscape">
+                
+                <!-- Floating Email GUI -->
+                <div class="floating-email" id="ab-email-gui">
+                    <div class="fe-header"><div style="width:12px;height:12px;border-radius:50%;background:#f59e0b;"></div> New Message</div>
+                    <div class="fe-row"><div class="fe-label">To:</div><div style="color:white">client@agency.com</div></div>
+                    <div class="fe-body" style="padding-bottom: 5px;">Here is the final video render.</div>
+                    <div class="fe-attach-zone" id="ab-attach-zone">
+                        <div class="attach-pill" id="ab-pill" style="background:var(--accent); display:none;">🎬 video.mp4 (500MB) ❌</div>
+                        <div class="attach-pill" id="ab-link-pill" style="background:#f59e0b; display:none;">🔗 Google Drive Link ✅</div>
+                    </div>
+                </div>
+
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 20 70 L 55 70" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 55 70 L 85 70" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path id="ab-path-up" d="M 20 70 C 35 70, 35 20, 50 20" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,5" fill="none" opacity="0"></path>
+                    <path id="ab-path-down" d="M 50 20 C 65 20, 70 70, 85 70" stroke="#10b981" stroke-width="2" stroke-dasharray="5,5" fill="none" opacity="0"></path>
+                </svg>
+
+                <div class="data-packet alert" id="ab-pkt-fail">🎬 500MB</div>
+                <div class="data-packet footprint" id="ab-pkt-upload">🎬 Uploading</div>
+                <div class="data-packet google" id="ab-pkt-email">✉️ Link</div>
+                <div class="data-packet whatsapp" id="ab-pkt-down">⬇️ Downloading</div>
+
+                <!-- Nodes -->
+                <div class="net-node ab-node" id="abn-sender"><div class="icon-circle">👩🏽‍🎨</div><div class="node-label">You</div></div>
+                <div class="net-node ab-node" id="abn-drive"><div class="icon-circle" style="font-size:3rem;">☁️</div><div class="node-label">Cloud Drive</div></div>
+                <div class="net-node ab-node" id="abn-server"><div class="icon-circle">🗄️</div><div class="node-label">Mail Server</div></div>
+                <div class="net-node ab-node" id="abn-rec"><div class="icon-circle">🏢</div><div class="node-label">Recipient</div></div>
+            </div>
+            <div class="desc-box" id="ab-desc" style="border-left-color: #f59e0b;"></div>
+        </section>
+
+        <!-- Slide 8: Safe vs Unsafe Attachments -->
+        <section class="slide" id="slide-8">
+            <h1 style="color: var(--accent);">Identifying Dangerous Files</h1>
+            <h2>Not all attachments are safe to click</h2>
+            <div class="landscape-box" style="display: flex; justify-content: center; align-items: center; border-color: var(--accent); box-shadow: inset 0 0 40px rgba(244, 63, 94, 0.1);">
+                
+                <div class="inbox-mockup" id="safe-inbox">
+                    <div class="inbox-top">
+                        <span>Inbox</span> <span>1 New</span>
+                    </div>
+                    <div class="inbox-row" id="safe-row-1">
+                        <div class="inbox-details">
+                            <span class="inbox-sender">HR Department</span>
+                            <span class="inbox-sub">Monthly Policy Update Guidelines</span>
+                        </div>
+                        <div class="att-pill att-safe">📄 policy.pdf ✅</div>
+                    </div>
+                    <div class="inbox-row" id="safe-row-2">
+                        <div class="inbox-details">
+                            <span class="inbox-sender">Design Team</span>
+                            <span class="inbox-sub">Final Assets for Q4 Campaign</span>
+                        </div>
+                        <div class="att-pill att-safe">🖼️ banner.png ✅</div>
+                    </div>
+                    <div class="inbox-row" id="safe-row-3">
+                        <div class="inbox-details">
+                            <span class="inbox-sender">Unknown Sender</span>
+                            <span class="inbox-sub" style="color:var(--accent); font-weight:bold;">URGENT: Invoice Overdue #8932</span>
+                        </div>
+                        <div class="att-pill att-unsafe">⚙️ invoice.exe ⚠️</div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="desc-box" id="sf-desc" style="border-left-color: var(--accent);"></div>
+        </section>
+
+        <!-- Slide 9: Anti-Virus Scanning -->
+        <section class="slide" id="slide-9">
+            <h1 style="color: var(--whatsapp);">Scan Before Opening</h1>
+            <h2>Handling ZIP files securely</h2>
+            <div class="landscape-box av-landscape">
+                
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 20 30 C 35 30, 45 50, 50 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 50 50 L 80 80" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet google" id="av-pkt-dl">⬇️ archive.zip</div>
+
+                <div class="net-node av-node" id="avn-server"><div class="icon-circle">🗄️</div><div class="node-label">Mail Server</div></div>
+                <div class="net-node av-node" id="avn-pc">
+                    <div class="radar-scan" id="av-radar"></div>
+                    <div class="shield-pulse blue-shield" id="av-shield"></div>
+                    <div class="icon-circle" id="av-pc-icon">💻</div><div class="node-label">Downloads Folder</div>
+                </div>
+                <div class="net-node av-node" id="avn-av"><div class="icon-circle" style="color:var(--primary);">🛡️</div><div class="node-label">Anti-Virus Engine</div></div>
+                
+            </div>
+            <div class="desc-box" id="av-desc" style="border-left-color: var(--whatsapp);"></div>
+        </section>
+
+        <!-- Slide 10: Executable Files -->
+        <section class="slide" id="slide-10">
+            <h1 style="color: var(--accent);">Executable Files (.exe)</h1>
+            <h2>The highest risk email attachment</h2>
+            <div class="landscape-box exe-landscape">
+                <svg class="bg-curve" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M 20 30 C 35 30, 45 50, 50 50" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                    <path d="M 50 50 L 80 80" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" fill="none"></path>
+                </svg>
+
+                <div class="data-packet alert" id="exe-pkt-dl">⚠️ invoice.exe</div>
+
+                <div class="net-node exe-node" id="exen-server"><div class="icon-circle">🗄️</div><div class="node-label">Mail Server</div></div>
+                <div class="net-node exe-node" id="exen-pc">
+                    <div class="red-radar-scan" id="exe-radar"></div>
+                    <div class="shield-pulse red-shield" id="exe-shield"></div>
+                    <div class="icon-circle" id="exe-pc-icon">💻</div><div class="node-label">Your PC</div>
+                </div>
+                <div class="net-node exe-node" id="exen-av"><div class="icon-circle" style="color:var(--accent);">🛡️</div><div class="node-label">Anti-Virus Engine</div></div>
+            </div>
+            <div class="desc-box" id="exe-desc" style="border-left-color: var(--accent);"></div>
+        </section>
+
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        // Slide 1: Phishing Data
+        let emStep = -1;
+        const emData = [
+            { txt: "<b style='color:var(--accent);'>1. The Attack:</b> A scammer crafts a fake email disguised as your Bank, using panic-inducing words like 'Account Suspended'." },
+            { txt: "<b style='color:#f59e0b;'>2. The Delivery:</b> The email bypasses basic spam filters and arrives directly in your primary Inbox." },
+            { txt: "<b style='color:var(--primary);'>3. Stop & Inspect (Sender):</b> Instead of panicking, you check the actual sender address. <br><i>Notice it says 'bank-security-update.com' instead of the official 'bank.lk'.</i>" },
+            { txt: "<b style='color:var(--primary);'>4. Stop & Inspect (Links):</b> You hover your mouse over the 'Login Here' button without clicking. <br><i>The URL reveals a suspicious, unsecure IP address.</i>" },
+            { txt: "<b style='color:var(--whatsapp);'>5. The Safe Action:</b> You've successfully identified the Phishing attempt! You report it as SPAM and delete the email permanently." }
+        ];
+
+        // Slide 2: Email Etiquette Data
+        let etqStep = -1;
+        const etqData = [
+            { txt: "<b style='color:white;'>A Professional Structure:</b> Every business email should be clean, clear, and easy to read. Let's break it down." },
+            { txt: "<b style='color:var(--whatsapp);'>1. The Subject Line:</b> Always include one! It must summarize the email clearly so the receiver knows the priority before opening." },
+            { txt: "<b style='color:var(--whatsapp);'>2. The Salutation:</b> Keep it professional. Use 'Dear', 'Hi', or 'Hello' followed by their name and appropriate title." },
+            { txt: "<b style='color:var(--whatsapp);'>3. The Body:</b> Get straight to the point. Keep paragraphs short, use professional language, and state exactly what action is needed." },
+            { txt: "<b style='color:var(--whatsapp);'>4. The Sign-off:</b> Close politely with 'Best Regards' or 'Sincerely' and always include your name/signature." }
+        ];
+
+        // Slide 3: Reply vs Reply All Data
+        let raStep = -1;
+        const raData = [
+            { txt: "<b style='color:var(--google);'>1. The Group Email:</b> A manager sends a project update to you and the entire team." },
+            { txt: "<b style='color:var(--whatsapp);'>2. Reply (Direct):</b> You just need to say 'Noted'. You use <b>Reply</b>. The message goes ONLY to the sender. The team's inbox stays clean." },
+            { txt: "<b style='color:#8b5cf6;'>3. Reply All (Broadcast):</b> You have an updated file everyone needs. You use <b>Reply All</b>. Everyone in the thread receives your response." },
+            { txt: "<b style='color:white;'>4. The Golden Rule:</b> Never use 'Reply All' for simple acknowledgments like 'Thanks' or 'Got it'. It creates unnecessary spam for your colleagues!" }
+        ];
+
+        // Slide 4: To, CC, BCC Data
+        let ccStep = -1;
+        const ccData = [
+            { txt: "<b style='color:var(--google);'>The Scenario:</b> You need to send a project update to your Manager, copy your Team, and secretly copy an External Client." },
+            { txt: "<b style='color:#f59e0b;'>Routing:</b> You send a single email from your outbox to the Mail Server." },
+            { txt: "<b style='color:var(--primary);'>Distribution:</b> The Server duplicates the email and distributes it to the designated inboxes." },
+            { txt: "<b style='color:var(--whatsapp);'>Transparency (To & CC):</b> The Manager (To) and the Team (CC) can both see each other's addresses. They know exactly who is in the conversation." },
+            { txt: "<b style='color:var(--accent);'>Privacy (BCC - Blind Carbon Copy):</b> The Client receives the email, but their address is hidden from the Manager and Team. Total privacy." }
+        ];
+
+        // Slide 5: Mass BCC Data
+        let bmStep = -1;
+        const bmData = [
+            { txt: "<b style='color:var(--accent);'>1. Mass Communication:</b> A company sends a newsletter to 500 clients at once." },
+            { txt: "<b style='color:var(--accent);'>2. The Mistake (Using To/CC):</b> The sender puts all 500 emails in the 'To' or 'CC' field. The server processes it." },
+            { txt: "<b style='color:var(--accent);'>3. Privacy Breach:</b> The email arrives. EVERY client can now see the personal email addresses of the other 499 clients! A massive privacy violation." },
+            { txt: "<b style='color:var(--whatsapp);'>4. The Ethical Way (Using BCC):</b> The sender uses <b>BCC (Blind Carbon Copy)</b> instead." },
+            { txt: "<b style='color:var(--whatsapp);'>5. Total Privacy:</b> The server strips the recipient list. Each client receives the email independently, seeing 'Undisclosed Recipients'. Privacy is secured." }
+        ];
+
+        // Slide 6: Small Attachments Data
+        let asStep = -1;
+        const asData = [
+            { txt: "<b style='color:#0ea5e9;'>1. Direct Attachment:</b> Small files (under 25MB) like PDFs and Word documents can be attached directly to the email." },
+            { txt: "<b style='color:#0ea5e9;'>2. File Attached:</b> The 2MB PDF is encoded securely into the email's body structure." },
+            { txt: "<b style='color:#0ea5e9;'>3. Transmission:</b> The email and the attached file travel together as a single packet to the mail server." },
+            { txt: "<b style='color:var(--whatsapp);'>4. Delivery:</b> The recipient receives the file straight into their inbox, ready to download." }
+        ];
+
+        // Slide 7: Large Attachments Data
+        let abStep = -1;
+        const abData = [
+            { txt: "<b style='color:var(--accent);'>1. The Limit:</b> You try to attach a 500MB video file. Email servers strictly reject files over 25MB to prevent network clogging." },
+            { txt: "<b style='color:#f59e0b;'>2. The Solution (Cloud Storage):</b> Instead of attaching it directly, you upload the heavy file to a Cloud Drive (Google Drive / OneDrive)." },
+            { txt: "<b style='color:var(--google);'>3. Generating a Link:</b> The drive provides a secure web link. You paste this lightweight link into your email." },
+            { txt: "<b style='color:var(--whatsapp);'>4. Delivery & Access:</b> The email travels instantly. The recipient clicks the link and streams/downloads the file directly from the Cloud!" }
+        ];
+
+        // Slide 8: Safe vs Unsafe Data
+        let sfStep = -1;
+        const sfData = [
+            { txt: "<b style='color:white;'>File Types Matter:</b> Not all attachments are safe. Let's look at what arrives in your inbox and how to handle them." },
+            { txt: "<b style='color:var(--whatsapp);'>Safe Documents:</b> Standard documents like `.pdf`, `.docx`, or `.xlsx` are generally safe to open, provided you know the sender." },
+            { txt: "<b style='color:var(--whatsapp);'>Media Files:</b> Images (`.jpg`, `.png`) and standard videos are harmless to preview directly in the browser." },
+            { txt: "<b style='color:var(--accent);'>DANGER! Executables:</b> If you receive a `.exe`, `.bat`, or `.msi` file unexpectedly, NEVER click it. These are executable programs that can install malware instantly." }
+        ];
+
+        // Slide 9: AV Scan Data
+        let avStep = -1;
+        const avData = [
+            { txt: "<b style='color:var(--google);'>1. Hidden Threats:</b> Sometimes hackers hide viruses inside compressed folders like `.zip` or `.rar`." },
+            { txt: "<b style='color:white;'>2. The Download:</b> You download the compressed folder to your computer. <i>Do not extract it yet!</i>" },
+            { txt: "<b style='color:var(--primary);'>3. Active Scanning:</b> Before opening, you right-click and command your Anti-Virus software (e.g., Windows Defender) to scan the file." },
+            { txt: "<b style='color:var(--whatsapp);'>4. Clearance:</b> The scanner checks the contents against malware databases. Clean! Now it's 100% safe to open." }
+        ];
+
+        // Slide 10: EXE Scan Data
+        let exeStep = -1;
+        const exeData = [
+            { txt: "<b style='color:var(--accent);'>1. The Trap:</b> A file named 'invoice.exe' arrives. It is masquerading as a document, but '.exe' means it's a program." },
+            { txt: "<b style='color:var(--accent);'>2. The Mistake:</b> You download the file and attempt to open it. The malicious program tries to execute." },
+            { txt: "<b style='color:var(--primary);'>3. Active Defense:</b> Your Anti-Virus detects unauthorized execution and immediately intercepts the process." },
+            { txt: "<b style='color:var(--whatsapp);'>4. Quarantined:</b> The AV forcefully blocks the execution and deletes the file, saving your computer from a malware infection." }
+        ];
+
+        function updateSlides() {
+            slides.forEach((slide, index) => { 
+                if (index === currentSlide) slide.classList.add('active'); 
+                else slide.classList.remove('active'); 
+            });
+
+            // Resets
+            if (currentSlide === 1) { /* Em Reset */
+                emStep = -1;
+                document.getElementById('em-packet').style.display = 'none';
+                document.getElementById('em-popup').classList.remove('show');
+                document.getElementById('em-link-hover').style.display = 'none';
+                document.getElementById('em-shield').classList.remove('active-shield');
+                document.getElementById('user-icon').style.borderColor = "#334155";
+                document.getElementById('user-icon').style.boxShadow = "0 0 15px rgba(0,0,0,0.5)";
+                document.getElementById('em-desc').innerHTML = "";
+                document.querySelectorAll('.em-node').forEach(n => n.classList.remove('active-node'));
+            }
+            if (currentSlide === 2) { /* Etq Reset */
+                etqStep = -1;
+                document.querySelectorAll('.mock-row').forEach(row => row.classList.remove('active-hl'));
+                document.getElementById('etq-desc').innerHTML = "";
+            }
+            if (currentSlide === 3) { /* Reply Reset */
+                raStep = -1;
+                document.querySelectorAll('.ra-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('ra-pkt-in-user').style.display = 'none';
+                document.getElementById('ra-pkt-in-team').style.display = 'none';
+                document.getElementById('ra-pkt-reply').style.display = 'none';
+                document.getElementById('ra-pkt-ra-sender').style.display = 'none';
+                document.getElementById('ra-pkt-ra-team').style.display = 'none';
+                document.getElementById('ra-desc').innerHTML = "";
+            }
+            if (currentSlide === 4) { /* CC Reset */
+                ccStep = -1;
+                document.querySelectorAll('.cc-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('cc-pkt-main').style.display = 'none';
+                document.getElementById('cc-pkt-to').style.display = 'none';
+                document.getElementById('cc-pkt-cc').style.display = 'none';
+                document.getElementById('cc-pkt-bcc').style.display = 'none';
+                document.getElementById('bcc-privacy').style.opacity = '0';
+                document.getElementById('cc-link').style.opacity = '0';
+                document.getElementById('bcc-icon').style.filter = "none";
+                document.getElementById('cc-desc').innerHTML = "";
+                document.getElementById('cc-email-gui').classList.remove('show');
+                document.getElementById('fe-row-to').style.background = 'transparent';
+                document.getElementById('fe-row-cc').style.background = 'transparent';
+                document.getElementById('fe-row-bcc').style.background = 'transparent';
+                document.getElementById('fe-tag-bcc').innerHTML = '🕵️ Client';
+            }
+            if (currentSlide === 5) { /* BM Reset */
+                bmStep = -1;
+                document.querySelectorAll('.bm-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('bm-pkt-main').style.display = 'none';
+                document.getElementById('bm-pkt-1').style.display = 'none';
+                document.getElementById('bm-pkt-2').style.display = 'none';
+                document.getElementById('bm-pkt-3').style.display = 'none';
+                document.getElementById('exposure-lines').style.opacity = '0';
+                document.getElementById('rp-1').style.opacity = '0';
+                document.getElementById('rp-2').style.opacity = '0';
+                document.getElementById('rp-3').style.opacity = '0';
+                document.getElementById('rp-1').classList.remove('safe');
+                document.getElementById('rp-2').classList.remove('safe');
+                document.getElementById('rp-3').classList.remove('safe');
+                document.getElementById('bcc-mass-box').classList.remove('safe');
+                document.getElementById('bcc-title').innerHTML = "The Privacy Breach";
+                document.getElementById('bcc-title').style.color = "var(--accent)";
+                document.getElementById('bm-desc').innerHTML = "";
+                document.getElementById('bm-desc').style.borderLeftColor = "var(--accent)";
+                document.getElementById('bm-email-gui').classList.remove('show');
+                document.getElementById('bm-row-to').style.display = 'flex';
+                document.getElementById('bm-row-bcc').style.display = 'none';
+                document.getElementById('bm-row-to').style.background = 'transparent';
+                document.getElementById('bm-row-bcc').style.background = 'transparent';
+                document.getElementById('bm-tag-bcc').innerHTML = '👥 500 Clients List';
+                document.querySelectorAll('#bmn-r1 .icon-circle, #bmn-r2 .icon-circle, #bmn-r3 .icon-circle').forEach(el => {
+                    el.style.borderColor = "#334155";
+                    el.style.boxShadow = "0 0 15px rgba(0,0,0,0.5)";
+                });
+            }
+            if (currentSlide === 6) { /* Small Attach Reset */
+                asStep = -1;
+                document.querySelectorAll('.as-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('as-email-gui').classList.remove('show');
+                document.getElementById('as-pill').classList.remove('show');
+                document.getElementById('as-pkt-main').style.display = 'none';
+                document.getElementById('as-desc').innerHTML = "";
+            }
+            if (currentSlide === 7) { /* Big Attach Reset */
+                abStep = -1;
+                document.querySelectorAll('.ab-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('ab-email-gui').classList.remove('show');
+                document.getElementById('ab-pill').style.display = 'none';
+                document.getElementById('ab-link-pill').style.display = 'none';
+                document.getElementById('ab-pkt-fail').style.display = 'none';
+                document.getElementById('ab-pkt-fail').classList.remove('error-bounce');
+                document.getElementById('ab-pkt-upload').style.display = 'none';
+                document.getElementById('ab-pkt-email').style.display = 'none';
+                document.getElementById('ab-pkt-down').style.display = 'none';
+                document.getElementById('ab-path-up').style.opacity = '0';
+                document.getElementById('ab-path-down').style.opacity = '0';
+                document.getElementById('ab-desc').innerHTML = "";
+            }
+            if (currentSlide === 8) { /* Safe Unsafe Reset */
+                sfStep = -1;
+                document.getElementById('safe-row-1').classList.remove('show-row');
+                document.getElementById('safe-row-2').classList.remove('show-row');
+                document.getElementById('safe-row-3').classList.remove('show-row');
+                document.getElementById('sf-desc').innerHTML = "";
+            }
+            if (currentSlide === 9) { /* AV Scan Reset */
+                avStep = -1;
+                document.querySelectorAll('.av-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('av-pkt-dl').style.display = 'none';
+                document.getElementById('av-radar').classList.remove('scanning');
+                document.getElementById('av-shield').classList.remove('active-shield');
+                document.getElementById('av-pc-icon').style.borderColor = "#334155";
+                document.getElementById('av-pc-icon').style.boxShadow = "0 0 15px rgba(0,0,0,0.5)";
+                document.getElementById('av-desc').innerHTML = "";
+            }
+            if (currentSlide === 10) { /* EXE Scan Reset */
+                exeStep = -1;
+                document.querySelectorAll('.exe-node').forEach(n => n.classList.remove('active-node'));
+                document.getElementById('exe-pkt-dl').style.display = 'none';
+                document.getElementById('exe-radar').classList.remove('scanning');
+                document.getElementById('exe-shield').classList.remove('active-shield');
+                document.getElementById('exe-pc-icon').style.borderColor = "#334155";
+                document.getElementById('exe-pc-icon').style.boxShadow = "0 0 15px rgba(0,0,0,0.5)";
+                document.getElementById('exe-desc').innerHTML = "";
+            }
+        }
+
+        // Logic functions
+        function runEmStep() {
+            emStep++;
+            const desc = document.getElementById('em-desc');
+            const pkt = document.getElementById('em-packet'); 
+            const popup = document.getElementById('em-popup');
+            const linkHover = document.getElementById('em-link-hover');
+            const shield = document.getElementById('em-shield');
+            const userIcon = document.getElementById('user-icon');
+
+            document.querySelectorAll('.em-node').forEach(n => n.classList.remove('active-node'));
+
+            if (emStep === 0) {
+                document.getElementById('emn-hacker').classList.add('active-node');
+                pkt.style.display = 'flex'; pkt.className = 'data-packet alert'; pkt.innerHTML = "⚠️ URGENT!";
+                pkt.style.left = '15%'; pkt.style.top = '50%';
+                setTimeout(() => { pkt.style.left = '50%'; }, 50);
+            } 
+            else if (emStep === 1) {
+                document.getElementById('emn-server').classList.add('active-node');
+                pkt.style.left = '50%'; pkt.style.top = '50%';
+                setTimeout(() => { pkt.style.left = '85%'; }, 50);
+            }
+            else if (emStep === 2) {
+                document.getElementById('emn-user').classList.add('active-node');
+                pkt.style.display = 'none'; popup.classList.add('show');
+                userIcon.style.borderColor = "var(--primary)"; userIcon.style.boxShadow = "0 0 25px rgba(59, 130, 246, 0.8)";
+            }
+            else if (emStep === 3) {
+                document.getElementById('emn-user').classList.add('active-node');
+                linkHover.style.display = 'block'; popup.style.top = window.innerWidth <= 950 ? "-160px" : "-160px";
+                document.getElementById('em-hl-red2').style.animation = "blink-caret 1s infinite";
+            }
+            else if (emStep === 4) {
+                document.getElementById('emn-user').classList.add('active-node');
+                popup.classList.remove('show'); shield.classList.add('active-shield');
+                userIcon.style.borderColor = "var(--whatsapp)"; userIcon.style.boxShadow = "0 0 25px rgba(37, 211, 102, 0.8)";
+                pkt.style.display = 'flex'; pkt.className = 'data-packet whatsapp'; pkt.innerHTML = "🗑️ Deleted";
+                pkt.style.left = '85%'; pkt.style.top = '50%';
+                setTimeout(() => { pkt.style.top = '80%'; pkt.style.opacity = '0'; }, 300);
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = emData[emStep].txt; desc.style.opacity = 1; }, 300); 
+        }
+
+        function runEtqStep() {
+            etqStep++;
+            const desc = document.getElementById('etq-desc');
+            document.querySelectorAll('.mock-row').forEach(row => row.classList.remove('active-hl'));
+            if (etqStep === 1) { document.getElementById('mock-subject').classList.add('active-hl'); }
+            else if (etqStep === 2) { document.getElementById('mock-greet').classList.add('active-hl'); }
+            else if (etqStep === 3) { document.getElementById('mock-content').classList.add('active-hl'); }
+            else if (etqStep === 4) { document.getElementById('mock-sign').classList.add('active-hl'); }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = etqData[etqStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runRaStep() {
+            raStep++;
+            const desc = document.getElementById('ra-desc');
+            const pktInUser = document.getElementById('ra-pkt-in-user');
+            const pktInTeam = document.getElementById('ra-pkt-in-team');
+            const pktReply = document.getElementById('ra-pkt-reply');
+            const pktRaSender = document.getElementById('ra-pkt-ra-sender');
+            const pktRaTeam = document.getElementById('ra-pkt-ra-team');
+            document.querySelectorAll('.ra-node').forEach(n => n.classList.remove('active-node'));
+
+            if (raStep === 0) {
+                document.getElementById('ran-sender').classList.add('active-node');
+                pktInUser.style.display = 'flex'; pktInUser.style.top = '20%'; pktInUser.style.left = '20%';
+                pktInTeam.style.display = 'flex'; pktInTeam.style.top = '20%'; pktInTeam.style.left = '20%';
+                setTimeout(() => {
+                    pktInUser.style.top = '80%'; pktInUser.style.left = '20%';
+                    pktInTeam.style.top = '50%'; pktInTeam.style.left = '80%';
+                }, 50);
+            }
+            else if (raStep === 1) {
+                document.getElementById('ran-you').classList.add('active-node');
+                pktInUser.style.display = 'none'; pktInTeam.style.display = 'none';
+                pktReply.style.display = 'flex'; pktReply.style.top = '80%'; pktReply.style.left = '20%';
+                setTimeout(() => { pktReply.style.top = '20%'; pktReply.style.left = '20%'; }, 50);
+            }
+            else if (raStep === 2) {
+                document.getElementById('ran-you').classList.add('active-node');
+                pktReply.style.display = 'none';
+                pktRaSender.style.display = 'flex'; pktRaSender.style.top = '80%'; pktRaSender.style.left = '20%';
+                pktRaTeam.style.display = 'flex'; pktRaTeam.style.top = '80%'; pktRaTeam.style.left = '20%';
+                setTimeout(() => {
+                    pktRaSender.style.top = '20%'; pktRaSender.style.left = '20%';
+                    pktRaTeam.style.top = '50%'; pktRaTeam.style.left = '80%';
+                }, 50);
+            }
+            else if (raStep === 3) {
+                document.getElementById('ran-you').classList.add('active-node');
+                pktRaSender.style.display = 'none'; pktRaTeam.style.display = 'none';
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = raData[raStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runCcStep() {
+            ccStep++;
+            const desc = document.getElementById('cc-desc');
+            const pktMain = document.getElementById('cc-pkt-main');
+            const pktTo = document.getElementById('cc-pkt-to');
+            const pktCc = document.getElementById('cc-pkt-cc');
+            const pktBcc = document.getElementById('cc-pkt-bcc');
+            document.querySelectorAll('.cc-node').forEach(n => n.classList.remove('active-node'));
+
+            if (ccStep === 0) {
+                document.getElementById('ccn-sender').classList.add('active-node');
+                pktMain.style.display = 'flex'; pktMain.style.left = '20%'; pktMain.style.top = '70%';
+                document.getElementById('cc-email-gui').classList.add('show');
+            }
+            else if (ccStep === 1) {
+                document.getElementById('ccn-server').classList.add('active-node');
+                pktMain.style.left = '55%'; pktMain.style.top = '50%';
+            }
+            else if (ccStep === 2) {
+                document.getElementById('ccn-server').classList.add('active-node');
+                pktMain.style.display = 'none';
+                pktTo.style.display = 'flex'; pktTo.style.left = '55%'; pktTo.style.top = '50%';
+                pktCc.style.display = 'flex'; pktCc.style.left = '55%'; pktCc.style.top = '50%';
+                pktBcc.style.display = 'flex'; pktBcc.style.left = '55%'; pktBcc.style.top = '50%';
+                setTimeout(() => {
+                    pktTo.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pktTo.style.top = window.innerWidth <= 950 ? '15%' : '20%';
+                    pktCc.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pktCc.style.top = '50%';
+                    pktBcc.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pktBcc.style.top = window.innerWidth <= 950 ? '85%' : '80%';
+                }, 50);
+            }
+            else if (ccStep === 3) {
+                document.getElementById('ccn-to').classList.add('active-node');
+                document.getElementById('ccn-cc').classList.add('active-node');
+                pktTo.style.display = 'none'; pktCc.style.display = 'none';
+                document.getElementById('cc-link').style.opacity = '1';
+                document.getElementById('fe-row-to').style.background = 'rgba(66, 133, 244, 0.15)';
+                document.getElementById('fe-row-cc').style.background = 'rgba(66, 133, 244, 0.15)';
+            }
+            else if (ccStep === 4) {
+                document.getElementById('ccn-to').classList.add('active-node');
+                document.getElementById('ccn-cc').classList.add('active-node');
+                document.getElementById('ccn-bcc').classList.add('active-node');
+                pktBcc.style.display = 'none';
+                document.getElementById('bcc-privacy').style.opacity = '1';
+                document.getElementById('bcc-icon').style.filter = "grayscale(1) brightness(0.5)";
+                document.querySelector('#ccn-bcc .icon-circle').style.borderColor = "var(--accent)";
+                document.getElementById('fe-row-to').style.background = 'transparent';
+                document.getElementById('fe-row-cc').style.background = 'transparent';
+                document.getElementById('fe-row-bcc').style.background = 'rgba(244, 63, 94, 0.15)';
+                document.getElementById('fe-tag-bcc').innerHTML = '🕵️ Client <span style="font-size:0.75rem; color:var(--accent); font-weight:bold;">🔒 HIDDEN</span>';
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = ccData[ccStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runBmStep() {
+            bmStep++;
+            const desc = document.getElementById('bm-desc');
+            const pktMain = document.getElementById('bm-pkt-main');
+            const pkt1 = document.getElementById('bm-pkt-1');
+            const pkt2 = document.getElementById('bm-pkt-2');
+            const pkt3 = document.getElementById('bm-pkt-3');
+            document.querySelectorAll('.bm-node').forEach(n => n.classList.remove('active-node'));
+
+            if (bmStep === 0) {
+                document.getElementById('bmn-sender').classList.add('active-node');
+                pktMain.style.display = 'flex'; pktMain.className = 'data-packet alert'; 
+                pktMain.style.left = '15%'; pktMain.style.top = '50%';
+                document.getElementById('bm-email-gui').classList.add('show');
+                document.getElementById('bm-row-to').style.background = 'rgba(244, 63, 94, 0.15)';
+            }
+            else if (bmStep === 1) {
+                document.getElementById('bmn-server').classList.add('active-node');
+                pktMain.style.left = '45%'; pktMain.style.top = '50%';
+            }
+            else if (bmStep === 2) {
+                document.getElementById('bmn-r1').classList.add('active-node');
+                document.getElementById('bmn-r2').classList.add('active-node');
+                document.getElementById('bmn-r3').classList.add('active-node');
+                pktMain.style.display = 'none';
+
+                pkt1.style.display = 'flex'; pkt1.className = 'data-packet alert'; pkt1.style.left = '45%'; pkt1.style.top = '50%';
+                pkt2.style.display = 'flex'; pkt2.className = 'data-packet alert'; pkt2.style.left = '45%'; pkt2.style.top = '50%';
+                pkt3.style.display = 'flex'; pkt3.className = 'data-packet alert'; pkt3.style.left = '45%'; pkt3.style.top = '50%';
+
+                setTimeout(() => {
+                    pkt1.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pkt1.style.top = window.innerWidth <= 950 ? '15%' : '20%';
+                    pkt2.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pkt2.style.top = '50%';
+                    pkt3.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pkt3.style.top = window.innerWidth <= 950 ? '85%' : '80%';
+                }, 50);
+
+                setTimeout(() => {
+                    document.getElementById('exposure-lines').style.opacity = '1';
+                    document.getElementById('rp-1').innerHTML = "To: 500 Exposed!";
+                    document.getElementById('rp-2').innerHTML = "To: 500 Exposed!";
+                    document.getElementById('rp-3').innerHTML = "To: 500 Exposed!";
+                    document.getElementById('rp-1').style.opacity = '1';
+                    document.getElementById('rp-2').style.opacity = '1';
+                    document.getElementById('rp-3').style.opacity = '1';
+                    pkt1.style.display = 'none'; pkt2.style.display = 'none'; pkt3.style.display = 'none';
+                    
+                    document.querySelectorAll('#bmn-r1 .icon-circle, #bmn-r2 .icon-circle, #bmn-r3 .icon-circle').forEach(el => {
+                        el.style.borderColor = "var(--accent)";
+                        el.style.boxShadow = "0 0 25px rgba(244, 63, 94, 0.8)";
+                    });
+                }, 800);
+            }
+            else if (bmStep === 3) {
+                document.getElementById('bmn-sender').classList.add('active-node');
+                document.getElementById('exposure-lines').style.opacity = '0';
+                document.getElementById('rp-1').style.opacity = '0'; document.getElementById('rp-2').style.opacity = '0'; document.getElementById('rp-3').style.opacity = '0';
+                document.getElementById('bcc-mass-box').classList.add('safe');
+                document.getElementById('bcc-title').innerHTML = "The Privacy Shield";
+                document.getElementById('bcc-title').style.color = "var(--whatsapp)";
+                document.getElementById('bm-desc').style.borderLeftColor = "var(--whatsapp)";
+
+                pktMain.style.display = 'flex'; pktMain.className = 'data-packet whatsapp'; 
+                pktMain.innerHTML = "✉️ Safe BCC";
+                pktMain.style.left = '15%'; pktMain.style.top = '50%';
+                
+                document.getElementById('bm-row-to').style.display = 'none';
+                document.getElementById('bm-row-bcc').style.display = 'flex';
+                document.getElementById('bm-row-bcc').style.background = 'rgba(37, 211, 102, 0.15)';
+                document.getElementById('bm-tag-bcc').innerHTML = '👥 500 Clients <span style="font-size:0.75rem; color:var(--whatsapp); font-weight:bold;">🔒 HIDDEN</span>';
+                
+                document.querySelectorAll('#bmn-r1 .icon-circle, #bmn-r2 .icon-circle, #bmn-r3 .icon-circle').forEach(el => {
+                    el.style.borderColor = "#334155";
+                    el.style.boxShadow = "0 0 15px rgba(0,0,0,0.5)";
+                });
+            }
+            else if (bmStep === 4) {
+                document.getElementById('bmn-r1').classList.add('active-node');
+                document.getElementById('bmn-r2').classList.add('active-node');
+                document.getElementById('bmn-r3').classList.add('active-node');
+                pktMain.style.left = '45%'; pktMain.style.top = '50%';
+                
+                setTimeout(() => {
+                    pktMain.style.display = 'none';
+                    pkt1.style.display = 'flex'; pkt1.className = 'data-packet whatsapp'; pkt1.style.left = '45%'; pkt1.style.top = '50%';
+                    pkt2.style.display = 'flex'; pkt2.className = 'data-packet whatsapp'; pkt2.style.left = '45%'; pkt2.style.top = '50%';
+                    pkt3.style.display = 'flex'; pkt3.className = 'data-packet whatsapp'; pkt3.style.left = '45%'; pkt3.style.top = '50%';
+
+                    setTimeout(() => {
+                        pkt1.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pkt1.style.top = window.innerWidth <= 950 ? '15%' : '20%';
+                        pkt2.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pkt2.style.top = '50%';
+                        pkt3.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pkt3.style.top = window.innerWidth <= 950 ? '85%' : '80%';
+                    }, 50);
+
+                    setTimeout(() => {
+                        document.getElementById('rp-1').classList.add('safe'); document.getElementById('rp-2').classList.add('safe'); document.getElementById('rp-3').classList.add('safe');
+                        document.getElementById('rp-1').innerHTML = "To: Undisclosed"; document.getElementById('rp-2').innerHTML = "To: Undisclosed"; document.getElementById('rp-3').innerHTML = "To: Undisclosed";
+                        document.getElementById('rp-1').style.opacity = '1'; document.getElementById('rp-2').style.opacity = '1'; document.getElementById('rp-3').style.opacity = '1';
+                        pkt1.style.display = 'none'; pkt2.style.display = 'none'; pkt3.style.display = 'none';
+                        document.querySelectorAll('#bmn-r1 .icon-circle, #bmn-r2 .icon-circle, #bmn-r3 .icon-circle').forEach(el => {
+                            el.style.borderColor = "var(--whatsapp)"; el.style.boxShadow = "0 0 25px rgba(37, 211, 102, 0.8)";
+                        });
+                    }, 800);
+                }, 300);
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = bmData[bmStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runAsStep() {
+            asStep++;
+            const desc = document.getElementById('as-desc');
+            const pktMain = document.getElementById('as-pkt-main');
+            document.querySelectorAll('.as-node').forEach(n => n.classList.remove('active-node'));
+
+            if (asStep === 0) {
+                document.getElementById('asn-sender').classList.add('active-node');
+                document.getElementById('as-email-gui').classList.add('show');
+            }
+            else if (asStep === 1) {
+                document.getElementById('asn-sender').classList.add('active-node');
+                document.getElementById('as-pill').classList.add('show');
+            }
+            else if (asStep === 2) {
+                document.getElementById('asn-server').classList.add('active-node');
+                pktMain.style.display = 'flex'; pktMain.style.left = '20%'; pktMain.style.top = '70%';
+                setTimeout(() => { pktMain.style.left = '55%'; pktMain.style.top = '50%'; }, 50);
+            }
+            else if (asStep === 3) {
+                document.getElementById('asn-rec').classList.add('active-node');
+                pktMain.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pktMain.style.top = window.innerWidth <= 950 ? '15%' : '30%';
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = asData[asStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runAbStep() {
+            abStep++;
+            const desc = document.getElementById('ab-desc');
+            const pktFail = document.getElementById('ab-pkt-fail');
+            const pktUp = document.getElementById('ab-pkt-upload');
+            const pktEmail = document.getElementById('ab-pkt-email');
+            const pktDown = document.getElementById('ab-pkt-down');
+            document.querySelectorAll('.ab-node').forEach(n => n.classList.remove('active-node'));
+
+            if (abStep === 0) {
+                document.getElementById('abn-sender').classList.add('active-node');
+                document.getElementById('ab-email-gui').classList.add('show');
+                document.getElementById('ab-pill').style.display = 'flex';
+                setTimeout(() => { document.getElementById('ab-pill').classList.add('show'); }, 50);
+                
+                pktFail.style.display = 'flex'; pktFail.style.left = '20%'; pktFail.style.top = '70%';
+                setTimeout(() => { pktFail.classList.add('error-bounce'); }, 100);
+            }
+            else if (abStep === 1) {
+                document.getElementById('abn-drive').classList.add('active-node');
+                pktFail.style.display = 'none';
+                pktUp.style.display = 'flex'; pktUp.style.left = '20%'; pktUp.style.top = '70%';
+                document.getElementById('ab-path-up').style.opacity = '1';
+                setTimeout(() => { pktUp.style.left = '50%'; pktUp.style.top = '20%'; }, 50);
+            }
+            else if (abStep === 2) {
+                document.getElementById('abn-sender').classList.add('active-node');
+                pktUp.style.display = 'none';
+                document.getElementById('ab-path-up').style.opacity = '0';
+                document.getElementById('ab-pill').style.display = 'none';
+                document.getElementById('ab-link-pill').style.display = 'flex';
+                setTimeout(() => { document.getElementById('ab-link-pill').classList.add('show'); }, 50);
+            }
+            else if (abStep === 3) {
+                document.getElementById('abn-rec').classList.add('active-node');
+                pktEmail.style.display = 'flex'; pktEmail.style.left = '20%'; pktEmail.style.top = '70%';
+                setTimeout(() => { pktEmail.style.left = '55%'; pktEmail.style.top = '70%'; }, 50);
+                setTimeout(() => { 
+                    pktEmail.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pktEmail.style.top = window.innerWidth <= 950 ? '15%' : '70%'; 
+                }, 800);
+                setTimeout(() => {
+                    pktEmail.style.display = 'none';
+                    document.getElementById('abn-drive').classList.add('active-node');
+                    document.getElementById('ab-path-down').style.opacity = '1';
+                    pktDown.style.display = 'flex'; pktDown.style.left = window.innerWidth <= 950 ? '80%' : '85%'; pktDown.style.top = window.innerWidth <= 950 ? '15%' : '70%';
+                    setTimeout(() => { pktDown.style.left = '50%'; pktDown.style.top = '20%'; }, 50);
+                }, 1600);
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = abData[abStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runSfStep() {
+            sfStep++;
+            const desc = document.getElementById('sf-desc');
+            
+            if (sfStep === 1) { document.getElementById('safe-row-1').classList.add('show-row'); }
+            else if (sfStep === 2) { document.getElementById('safe-row-2').classList.add('show-row'); }
+            else if (sfStep === 3) { document.getElementById('safe-row-3').classList.add('show-row'); }
+            
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = sfData[sfStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runAvStep() {
+            avStep++;
+            const desc = document.getElementById('av-desc');
+            const pkt = document.getElementById('av-pkt-dl');
+            const radar = document.getElementById('av-radar');
+            const shield = document.getElementById('av-shield');
+            const icon = document.getElementById('av-pc-icon');
+            document.querySelectorAll('.av-node').forEach(n => n.classList.remove('active-node'));
+
+            if (avStep === 0) {
+                document.getElementById('avn-server').classList.add('active-node');
+            }
+            else if (avStep === 1) {
+                document.getElementById('avn-pc').classList.add('active-node');
+                pkt.style.display = 'flex'; pkt.style.left = '20%'; pkt.style.top = '30%';
+                setTimeout(() => { pkt.style.left = '50%'; pkt.style.top = '50%'; }, 50);
+            }
+            else if (avStep === 2) {
+                document.getElementById('avn-av').classList.add('active-node');
+                pkt.style.display = 'none';
+                radar.classList.add('scanning');
+            }
+            else if (avStep === 3) {
+                document.getElementById('avn-pc').classList.add('active-node');
+                radar.classList.remove('scanning');
+                shield.classList.add('active-shield');
+                icon.style.borderColor = "var(--whatsapp)";
+                icon.style.boxShadow = "0 0 25px rgba(37, 211, 102, 0.8)";
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = avData[avStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function runExeStep() {
+            exeStep++;
+            const desc = document.getElementById('exe-desc');
+            const pkt = document.getElementById('exe-pkt-dl');
+            const radar = document.getElementById('exe-radar');
+            const shield = document.getElementById('exe-shield');
+            const icon = document.getElementById('exe-pc-icon');
+            document.querySelectorAll('.exe-node').forEach(n => n.classList.remove('active-node'));
+
+            if (exeStep === 0) {
+                document.getElementById('exen-server').classList.add('active-node');
+            }
+            else if (exeStep === 1) {
+                document.getElementById('exen-pc').classList.add('active-node');
+                pkt.style.display = 'flex'; pkt.style.left = '20%'; pkt.style.top = '30%';
+                setTimeout(() => { pkt.style.left = '50%'; pkt.style.top = '50%'; }, 50);
+            }
+            else if (exeStep === 2) {
+                document.getElementById('exen-av').classList.add('active-node');
+                pkt.style.display = 'none';
+                radar.classList.add('scanning');
+            }
+            else if (exeStep === 3) {
+                document.getElementById('exen-pc').classList.add('active-node');
+                radar.classList.remove('scanning');
+                shield.classList.add('active-shield');
+                icon.style.borderColor = "var(--accent)";
+                icon.style.boxShadow = "0 0 25px rgba(244, 63, 94, 0.8)";
+            }
+            desc.style.opacity = 0; 
+            setTimeout(() => { desc.innerHTML = exeData[exeStep].txt; desc.style.opacity = 1; }, 300);
+        }
+
+        function nextSlide() {
+            if (currentSlide === 1 && emStep < emData.length - 1) { runEmStep(); return; }
+            if (currentSlide === 2 && etqStep < etqData.length - 1) { runEtqStep(); return; }
+            if (currentSlide === 3 && raStep < raData.length - 1) { runRaStep(); return; }
+            if (currentSlide === 4 && ccStep < ccData.length - 1) { runCcStep(); return; }
+            if (currentSlide === 5 && bmStep < bmData.length - 1) { runBmStep(); return; }
+            if (currentSlide === 6 && asStep < asData.length - 1) { runAsStep(); return; }
+            if (currentSlide === 7 && abStep < abData.length - 1) { runAbStep(); return; }
+            if (currentSlide === 8 && sfStep < sfData.length - 1) { runSfStep(); return; }
+            if (currentSlide === 9 && avStep < avData.length - 1) { runAvStep(); return; }
+            if (currentSlide === 10 && exeStep < exeData.length - 1) { runExeStep(); return; }
+            
+            if (currentSlide < slides.length - 1) { currentSlide++; updateSlides(); }
+        }
+
+        function prevSlide() { 
+            if (currentSlide > 0) { currentSlide--; updateSlides(); } 
+        }
+
+        document.addEventListener('keydown', (e) => { 
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide(); 
+            else if (e.key === 'ArrowLeft') prevSlide(); 
+        });
+        
+        updateSlides();
+    </script>
+</body>
+</html>
